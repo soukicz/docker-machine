@@ -87,30 +87,31 @@ type Driver struct {
 	SecurityGroupName  string
 	SecurityGroupNames []string
 
-	SecurityGroupReadOnly   bool
-	OpenPorts               []string
-	Tags                    string
-	ReservationId           string
-	DeviceName              string
-	RootSize                int64
-	VolumeType              string
-	IamInstanceProfile      string
-	VpcId                   string
-	SubnetId                string
-	Zone                    string
-	keyPath                 string
-	RequestSpotInstance     bool
-	SpotPrice               string
-	BlockDurationMinutes    int64
-	PrivateIPOnly           bool
-	UsePrivateIP            bool
-	UseEbsOptimizedInstance bool
-	Monitoring              bool
-	SSHPrivateKeyPath       string
-	RetryCount              int
-	Endpoint                string
-	DisableSSL              bool
-	UserDataFile            string
+	SecurityGroupReadOnly      bool
+	OpenPorts                  []string
+	Tags                       string
+	ReservationId              string
+	DeviceName                 string
+	RootSize                   int64
+	VolumeType                 string
+	IamInstanceProfile         string
+	VpcId                      string
+	SubnetId                   string
+	Zone                       string
+	UseDefaultNetworkInterface bool
+	keyPath                    string
+	RequestSpotInstance        bool
+	SpotPrice                  string
+	BlockDurationMinutes       int64
+	PrivateIPOnly              bool
+	UsePrivateIP               bool
+	UseEbsOptimizedInstance    bool
+	Monitoring                 bool
+	SSHPrivateKeyPath          string
+	RetryCount                 int
+	Endpoint                   string
+	DisableSSL                 bool
+	UserDataFile               string
 
 	spotInstanceRequestId string
 }
@@ -280,6 +281,11 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "Disable SSL when sending requests",
 			EnvVar: "AWS_INSECURE_TRANSPORT",
 		},
+		mcnflag.BoolFlag{
+			Name:   "amazonec2-use-default-network-interface",
+			Usage:  "Use default NetworkInterface",
+			EnvVar: "AWS_USE_DEFAULT_NETWORK_INTERFACE",
+		},
 		mcnflag.StringFlag{
 			Name:   "amazonec2-userdata",
 			Usage:  "path to file with cloud-init user data",
@@ -382,6 +388,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.SetSwarmConfigFromFlags(flags)
 	d.RetryCount = flags.Int("amazonec2-retries")
 	d.OpenPorts = flags.StringSlice("amazonec2-open-port")
+	d.UseDefaultNetworkInterface = flags.Bool("amazonec2-use-default-network-interface")
 	d.UserDataFile = flags.String("amazonec2-userdata")
 
 	d.DisableSSL = flags.Bool("amazonec2-insecure-transport")
@@ -625,12 +632,21 @@ func (d *Driver) innerCreate() error {
 			DeleteOnTermination: aws.Bool(true),
 		},
 	}
-	netSpecs := []*ec2.InstanceNetworkInterfaceSpecification{{
-		DeviceIndex:              aws.Int64(0), // eth0
-		Groups:                   makePointerSlice(d.securityGroupIds()),
-		SubnetId:                 &d.SubnetId,
-		AssociatePublicIpAddress: aws.Bool(!d.PrivateIPOnly),
-	}}
+
+	var netSpecs []*ec2.InstanceNetworkInterfaceSpecification = nil
+	var securityGroupIds []*string = nil
+	var subnetId *string = nil
+	if !d.UseDefaultNetworkInterface {
+		netSpecs = []*ec2.InstanceNetworkInterfaceSpecification{{
+			DeviceIndex:              aws.Int64(0), // eth0
+			Groups:                   makePointerSlice(d.securityGroupIds()),
+			SubnetId:                 &d.SubnetId,
+			AssociatePublicIpAddress: aws.Bool(!d.PrivateIPOnly),
+		}}
+	} else {
+		securityGroupIds = makePointerSlice(d.securityGroupIds())
+		subnetId = &d.SubnetId
+	}
 
 	regionZone := d.getRegionZone()
 	log.Debugf("launching instance in subnet %s", d.SubnetId)
@@ -647,6 +663,8 @@ func (d *Driver) innerCreate() error {
 				KeyName:           &d.KeyName,
 				InstanceType:      &d.InstanceType,
 				NetworkInterfaces: netSpecs,
+				SecurityGroupIds:  securityGroupIds,
+				SubnetId:          subnetId,
 				Monitoring:        &ec2.RunInstancesMonitoringEnabled{Enabled: aws.Bool(d.Monitoring)},
 				IamInstanceProfile: &ec2.IamInstanceProfileSpecification{
 					Name: &d.IamInstanceProfile,
@@ -730,6 +748,8 @@ func (d *Driver) innerCreate() error {
 			KeyName:           &d.KeyName,
 			InstanceType:      &d.InstanceType,
 			NetworkInterfaces: netSpecs,
+			SecurityGroupIds:  securityGroupIds,
+			SubnetId:          subnetId,
 			Monitoring:        &ec2.RunInstancesMonitoringEnabled{Enabled: aws.Bool(d.Monitoring)},
 			IamInstanceProfile: &ec2.IamInstanceProfileSpecification{
 				Name: &d.IamInstanceProfile,
