@@ -826,7 +826,7 @@ func (d *Driver) innerCreate() error {
 		log.Infof("Created spot fleet request %s ...", d.SpotFleetRequestId)
 
 		var spotInstanceRequestId *string = nil
-		for i := 0; i < 3; i++ {
+		for i := 0; i < 40; i++ {
 			// AWS eventual consistency means we could not have SpotInstanceRequest ready yet
 			var resolvedSpotFleetInstance *ec2.DescribeSpotFleetInstancesOutput
 			resolvedSpotFleetInstance, err = d.getClient().DescribeSpotFleetInstances(&ec2.DescribeSpotFleetInstancesInput{
@@ -844,6 +844,7 @@ func (d *Driver) innerCreate() error {
 			}
 
 			if len(resolvedSpotFleetInstance.ActiveInstances) == 0 {
+				time.Sleep(5 * time.Second)
 				continue;
 			}
 
