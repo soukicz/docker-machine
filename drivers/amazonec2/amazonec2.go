@@ -689,8 +689,8 @@ func (d *Driver) innerCreate() error {
 		AssociatePublicIpAddress: aws.Bool(!d.PrivateIPOnly),
 	}}
 
-		regionZone := d.getRegionZone()
-		log.Debugf("launching spot instance in subnet %s", d.SubnetIds[0])
+	regionZone := d.getRegionZone()
+	log.Debugf("launching spot instance in subnet %s", d.SubnetIds[0])
 
 	var instance *ec2.Instance
 
@@ -793,37 +793,37 @@ func (d *Driver) innerCreate() error {
 			})
 		}
 
-		var subnetId = strings.Join(d.SubnetIds,",")
+		var subnetId = strings.Join(d.SubnetIds, ",")
 		log.Debugf("launching spot fleet in subnet [%s]", subnetId)
 
-		var validUntil = time.Now().AddDate(1, 0, 0);
+		var validUntil = time.Now().AddDate(1, 0, 0).Truncate(time.Hour)
 		req := ec2.RequestSpotFleetInput{
 			DryRun: aws.Bool(false),
 			SpotFleetRequestConfig: &ec2.SpotFleetRequestConfigData{
-				AllocationStrategy: aws.String("lowestPrice"),
-				TargetCapacity: aws.Int64(1),
-				ValidUntil: &validUntil,
+				AllocationStrategy:               aws.String("lowestPrice"),
+				TargetCapacity:                   aws.Int64(1),
+				ValidUntil:                       &validUntil,
 				TerminateInstancesWithExpiration: aws.Bool(true),
-				IamFleetRole: &d.IamFleetRole,
-				Type: aws.String("request"),
+				IamFleetRole:                     &d.IamFleetRole,
+				Type:                             aws.String("request"),
 				LaunchSpecifications: []*ec2.SpotFleetLaunchSpecification{
 					{
-						ImageId: &d.AMI,
-						InstanceType: &d.InstanceType,
-						SubnetId: &subnetId,
-						Monitoring: &ec2.SpotFleetMonitoring{Enabled: aws.Bool(d.Monitoring)},
-						KeyName: &d.KeyName,
-						EbsOptimized: &d.UseEbsOptimizedInstance,
+						ImageId:             &d.AMI,
+						InstanceType:        &d.InstanceType,
+						SubnetId:            &subnetId,
+						Monitoring:          &ec2.SpotFleetMonitoring{Enabled: aws.Bool(d.Monitoring)},
+						KeyName:             &d.KeyName,
+						EbsOptimized:        &d.UseEbsOptimizedInstance,
 						BlockDeviceMappings: []*ec2.BlockDeviceMapping{bdm},
-						UserData: &userdata,
-						SecurityGroups: securityGroups,
+						UserData:            &userdata,
+						SecurityGroups:      securityGroups,
 					},
 				},
 			},
 		}
 		if d.SpotPrice != "" {
-			req.SpotFleetRequestConfig.SpotPrice = &d.SpotPrice;
-			req.SpotFleetRequestConfig.LaunchSpecifications[0].SpotPrice = &d.SpotPrice;
+			req.SpotFleetRequestConfig.SpotPrice = &d.SpotPrice
+			req.SpotFleetRequestConfig.LaunchSpecifications[0].SpotPrice = &d.SpotPrice
 		}
 
 		spotFleetRequest, err := d.getClient().RequestSpotFleet(&req)
@@ -853,12 +853,12 @@ func (d *Driver) innerCreate() error {
 
 			if len(resolvedSpotFleetInstance.ActiveInstances) == 0 {
 				time.Sleep(5 * time.Second)
-				continue;
+				continue
 			}
 
 			spotInstanceRequestId = resolvedSpotFleetInstance.ActiveInstances[0].SpotInstanceRequestId
 			if spotInstanceRequestId == nil {
-				continue;
+				continue
 			}
 
 			break
@@ -1161,7 +1161,7 @@ func (d *Driver) cancelSpotFleetRequest() error {
 
 	_, err := d.getClient().CancelSpotFleetRequests(&ec2.CancelSpotFleetRequestsInput{
 		SpotFleetRequestIds: []*string{&d.SpotFleetRequestId},
-		TerminateInstances: aws.Bool(true),
+		TerminateInstances:  aws.Bool(true),
 	})
 
 	return err
