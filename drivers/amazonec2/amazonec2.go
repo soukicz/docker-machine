@@ -796,13 +796,11 @@ func (d *Driver) innerCreate() error {
 		var subnetId = strings.Join(d.SubnetIds, ",")
 		log.Debugf("launching spot fleet in subnet [%s]", subnetId)
 
-		var validUntil = time.Now().AddDate(1, 0, 0).Truncate(time.Hour)
 		req := ec2.RequestSpotFleetInput{
 			DryRun: aws.Bool(false),
 			SpotFleetRequestConfig: &ec2.SpotFleetRequestConfigData{
 				AllocationStrategy:               aws.String("lowestPrice"),
 				TargetCapacity:                   aws.Int64(1),
-				ValidUntil:                       &validUntil,
 				TerminateInstancesWithExpiration: aws.Bool(true),
 				IamFleetRole:                     &d.IamFleetRole,
 				Type:                             aws.String("request"),
