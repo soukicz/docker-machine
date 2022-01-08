@@ -822,7 +822,7 @@ func (d *Driver) innerCreate() error {
 		if d.SpotPrice != "" {
 			req.SpotFleetRequestConfig.SpotPrice = &d.SpotPrice
 			req.SpotFleetRequestConfig.LaunchSpecifications[0].SpotPrice = &d.SpotPrice
-			req.CreditSpecification = &ec2.CreditSpecification{CpuCredits: aws.String("standard")}
+			req.SpotFleetRequestConfig.LaunchSpecifications[0].CreditSpecification = &ec2.CreditSpecification{CpuCredits: aws.String("standard")}
 		}
 
 		spotFleetRequest, err := d.getClient().RequestSpotFleet(&req)
