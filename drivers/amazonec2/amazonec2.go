@@ -815,6 +815,9 @@ func (d *Driver) innerCreate() error {
 						BlockDeviceMappings: []*ec2.BlockDeviceMapping{bdm},
 						UserData:            &userdata,
 						SecurityGroups:      securityGroups,
+						IamInstanceProfile: &ec2.IamInstanceProfileSpecification{
+							Name: &d.IamInstanceProfile,
+						},
 					},
 				},
 			},
